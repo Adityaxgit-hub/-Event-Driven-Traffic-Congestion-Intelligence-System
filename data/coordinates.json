@@ -1,0 +1,94 @@
+{
+    "roads": {
+        "Hosur Road": {
+            "area": "Electronic City",
+            "lat": 12.8399,
+            "lon": 77.6770
+        },
+        "Electronic City Flyover": {
+            "area": "Electronic City",
+            "lat": 12.8456,
+            "lon": 77.6603
+        },
+        "Bannerghatta Road": {
+            "area": "BTM Layout",
+            "lat": 12.9068,
+            "lon": 77.5978
+        },
+        "Outer Ring Road (BTM)": {
+            "area": "BTM Layout",
+            "lat": 12.9166,
+            "lon": 77.6101
+        },
+        "80 Feet Road": {
+            "area": "Koramangala",
+            "lat": 12.9352,
+            "lon": 77.6245
+        },
+        "Sarjapur Road": {
+            "area": "Koramangala",
+            "lat": 12.9167,
+            "lon": 77.6400
+        },
+        "100 Feet Road": {
+            "area": "Indiranagar",
+            "lat": 12.9784,
+            "lon": 77.6408
+        },
+        "CMH Road": {
+            "area": "Indiranagar",
+            "lat": 12.9810,
+            "lon": 77.6420
+        },
+        "South End Road": {
+            "area": "Jayanagar",
+            "lat": 12.9250,
+            "lon": 77.5830
+        },
+        "11th Main Road": {
+            "area": "Jayanagar",
+            "lat": 12.9280,
+            "lon": 77.5780
+        },
+        "ITPL Main Road": {
+            "area": "Whitefield",
+            "lat": 12.9854,
+            "lon": 77.7319
+        },
+        "Whitefield Main Road": {
+            "area": "Whitefield",
+            "lat": 12.9698,
+            "lon": 77.7500
+        },
+        "27th Main Road": {
+            "area": "HSR Layout",
+            "lat": 12.9116,
+            "lon": 77.6389
+        },
+        "Outer Ring Road (HSR)": {
+            "area": "HSR Layout",
+            "lat": 12.9150,
+            "lon": 77.6500
+        },
+        "Old Madras Road": {
+            "area": "KR Puram",
+            "lat": 13.0070,
+            "lon": 77.6970
+        },
+        "KR Puram Bridge Road": {
+            "area": "KR Puram",
+            "lat": 13.0100,
+            "lon": 77.6870
+        }
+    },
+    "areas": {
+        "Electronic City": {"lat": 12.8440, "lon": 77.6630},
+        "BTM Layout": {"lat": 12.9120, "lon": 77.6040},
+        "Koramangala": {"lat": 12.9260, "lon": 77.6320},
+        "Indiranagar": {"lat": 12.9800, "lon": 77.6410},
+        "Jayanagar": {"lat": 12.9260, "lon": 77.5800},
+        "Whitefield": {"lat": 12.9770, "lon": 77.7400},
+        "HSR Layout": {"lat": 12.9130, "lon": 77.6440},
+        "KR Puram": {"lat": 13.0080, "lon": 77.6920}
+    }
+}
