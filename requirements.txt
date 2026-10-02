@@ -10,3 +10,4 @@ streamlit-folium>=0.15.0
 folium>=0.15.0
 matplotlib>=3.7.0
 seaborn>=0.12.0
+python-dotenv>=1.0.0

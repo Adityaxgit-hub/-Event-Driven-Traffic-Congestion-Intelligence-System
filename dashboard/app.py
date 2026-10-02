@@ -14,10 +14,12 @@ import os
 # Ensure project root is on the path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import datetime
 import numpy as np
 import pandas as pd
 import streamlit as st
 import folium
+from folium.plugins import Geocoder
 from streamlit_folium import st_folium
 
 from src.utils import (
@@ -164,12 +166,13 @@ except FileNotFoundError as e:
 roads = list(coords["roads"].keys())
 areas = list(coords["areas"].keys())
 
-# Date/time picker
+# Date/time picker (defaults to Today, allows selecting past, present, or future dates)
+today_date = datetime.date.today()
 sim_date = st.sidebar.date_input(
     "📅 Date",
-    value=df["Date"].max().date(),
+    value=today_date,
     min_value=df["Date"].min().date(),
-    max_value=df["Date"].max().date(),
+    max_value=today_date + datetime.timedelta(days=365),
 )
 sim_hour = st.sidebar.slider("🕐 Hour of Day", 0, 23, 9)
 
@@ -210,18 +213,51 @@ st.sidebar.markdown(
 # Build scenario DataFrame
 # ---------------------------------------------------------------------------
 
+def get_diurnal_multipliers(hour: int) -> tuple[float, float, float, float]:
+    """
+    Returns (volume_mult, speed_mult, capacity_mult, tti_mult) for a given hour of day.
+    Reflects peak morning (8-10 AM), evening (5-8 PM), midday (11 AM-4 PM), and night (11 PM-5 AM) curves.
+    """
+    if 8 <= hour <= 10:       # Morning Peak
+        return 1.45, 0.65, 1.40, 1.40
+    elif 17 <= hour <= 20:    # Evening Peak
+        return 1.65, 0.55, 1.55, 1.55
+    elif 11 <= hour <= 16:    # Midday Off-Peak
+        return 1.00, 0.90, 1.00, 1.00
+    elif 6 <= hour <= 7 or 21 <= hour <= 22: # Shoulder Hours
+        return 0.75, 1.15, 0.75, 0.85
+    else:                     # Night (23 to 5 AM)
+        return 0.30, 1.50, 0.30, 0.70
+
+
 def build_scenario(df: pd.DataFrame) -> pd.DataFrame:
     """
     Build a scenario DataFrame (one row per road) using the sidebar inputs
-    and historical data for baseline values.
+    and historical patterns (matched by day-of-week and hour) for baseline values.
+    Applies diurnal traffic multipliers so moving the Hour of Day slider dynamically
+    updates traffic volume, average speed, capacity utilization, and congestion predictions.
     """
-    # Get the closest historical records for baseline numeric values
+    selected_dow = pd.Timestamp(sim_date).dayofweek
     date_mask = df["Date"].dt.date == sim_date
-    if date_mask.sum() == 0:
-        # Fallback: use all data averaged by road
-        baseline = df.groupby("Road/Intersection Name").mean(numeric_only=True).reset_index()
-    else:
+
+    if date_mask.sum() > 0:
+        # If dataset contains this exact date, use that date's record
         baseline = df[date_mask].groupby("Road/Intersection Name").mean(numeric_only=True).reset_index()
+    else:
+        # For TODAY or FUTURE dates: match historical data for the same Day of Week & Hour
+        dow_mask = (df["Day_of_Week"] == selected_dow) & (df["Hour"] == sim_hour)
+        if dow_mask.sum() > 0:
+            baseline = df[dow_mask].groupby("Road/Intersection Name").mean(numeric_only=True).reset_index()
+        else:
+            # Fallback to day of week overall averages
+            dow_only_mask = (df["Day_of_Week"] == selected_dow)
+            if dow_only_mask.sum() > 0:
+                baseline = df[dow_only_mask].groupby("Road/Intersection Name").mean(numeric_only=True).reset_index()
+            else:
+                baseline = df.groupby("Road/Intersection Name").mean(numeric_only=True).reset_index()
+
+    # Get hourly multipliers for the selected sim_hour
+    vol_m, speed_m, cap_m, tti_m = get_diurnal_multipliers(sim_hour)
 
     scenario_rows = []
     for road in roads:
@@ -232,6 +268,17 @@ def build_scenario(df: pd.DataFrame) -> pd.DataFrame:
             road_baseline = road_baseline.iloc[0]
 
         weather_severity = {"Clear": 0, "Fog": 1, "Rain": 2, "Heavy Rain": 3}
+
+        # Apply diurnal scaling
+        base_vol = road_baseline.get("Traffic Volume", 3000)
+        base_speed = road_baseline.get("Average Speed (km/h)", 30)
+        base_cap = road_baseline.get("Road Capacity Utilization (%)", 60)
+        base_tti = road_baseline.get("Travel Time Index", 1.5)
+
+        sim_vol = int(base_vol * vol_m)
+        sim_speed = round(max(5.0, base_speed * speed_m), 1)
+        sim_cap = round(min(100.0, max(5.0, base_cap * cap_m)), 1)
+        sim_tti = round(max(1.0, base_tti * tti_m), 2)
 
         row = {
             "Road/Intersection Name": road,
@@ -244,11 +291,11 @@ def build_scenario(df: pd.DataFrame) -> pd.DataFrame:
             "Weather Conditions": sim_weather,
             "Weather_Severity": weather_severity.get(sim_weather, 0),
             "Is_Roadwork": int(sim_roadwork),
-            "Traffic Volume": road_baseline.get("Traffic Volume", 3000),
-            "Average Speed (km/h)": road_baseline.get("Average Speed (km/h)", 30),
-            "Travel Time Index": road_baseline.get("Travel Time Index", 1.5),
-            "Road Capacity Utilization (%)": road_baseline.get("Road Capacity Utilization (%)", 60),
-            "Pedestrian & Cyclist Count": road_baseline.get("Pedestrian & Cyclist Count", 200),
+            "Traffic Volume": sim_vol,
+            "Average Speed (km/h)": sim_speed,
+            "Travel Time Index": sim_tti,
+            "Road Capacity Utilization (%)": sim_cap,
+            "Pedestrian & Cyclist Count": int(road_baseline.get("Pedestrian & Cyclist Count", 200)),
             "Incident Reports": road_baseline.get("Incident Reports", 1),
             "Historical Incident Rate": road_baseline.get("Historical Incident Rate", 200),
             "Rolling_Congestion_3": road_baseline.get("Rolling_Congestion_3", 1.0),
@@ -256,13 +303,15 @@ def build_scenario(df: pd.DataFrame) -> pd.DataFrame:
             "Congestion_Lag_2": road_baseline.get("Congestion_Lag_2", 1.0),
             "Congestion_Lag_3": road_baseline.get("Congestion_Lag_3", 1.0),
             "Weather_Hour": weather_severity.get(sim_weather, 0) * sim_hour,
-            "Roadwork_Volume": int(sim_roadwork) * road_baseline.get("Traffic Volume", 3000),
+            "Roadwork_Volume": int(sim_roadwork) * sim_vol,
             "Latitude": coords["roads"][road]["lat"],
             "Longitude": coords["roads"][road]["lon"],
         }
         scenario_rows.append(row)
 
     return pd.DataFrame(scenario_rows)
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -356,18 +405,39 @@ map_col, detail_col = st.columns([1.2, 1])
 
 # --- MAP ---
 with map_col:
-    st.markdown("### 🗺️ Bengaluru Road Network")
+    search_col1, search_col2 = st.columns([3, 1])
+    with search_col1:
+        st.markdown("### 🗺️ Bengaluru Road Network")
+    with search_col2:
+        search_road = st.selectbox(
+            "🔍 Search Map",
+            ["All Roads"] + sorted(roads),
+            index=0,
+            key="map_search_select",
+            label_visibility="collapsed",
+        )
+
+    # Calculate center & zoom based on search
+    if search_road != "All Roads" and search_road in coords["roads"]:
+        map_center = [coords["roads"][search_road]["lat"], coords["roads"][search_road]["lon"]]
+        map_zoom = 15
+    else:
+        map_center = [12.94, 77.63]
+        map_zoom = 12
 
     # Build map with selected tile style
     tile_cfg = get_map_config(map_style)
     map_kwargs = {
-        "location": [12.94, 77.63],
-        "zoom_start": 12,
+        "location": map_center,
+        "zoom_start": map_zoom,
         "tiles": tile_cfg["tiles"],
     }
     if tile_cfg["attr"]:
         map_kwargs["attr"] = tile_cfg["attr"]
     m = folium.Map(**map_kwargs)
+
+    # Add embedded Leaflet Geocoder search bar inside map canvas
+    Geocoder(position="topleft", add_marker=True).add_to(m)
 
     color_map = {0: "green", 1: "orange", 2: "red"}
     icon_map = {0: "ok-sign", 1: "warning-sign", 2: "exclamation-sign"}
@@ -392,16 +462,30 @@ with map_col:
         </div>
         """
 
+        is_searched = (search_road == road)
+
         folium.Marker(
             location=[row["Latitude"], row["Longitude"]],
-            popup=folium.Popup(popup_html, max_width=250),
-            tooltip=f"{road} -- {label}",
+            popup=folium.Popup(popup_html, max_width=250, show=is_searched),
+            tooltip=f"{'🔍 ' if is_searched else ''}{road} -- {label}",
             icon=folium.Icon(
-                color=color_map[level],
-                icon=icon_map[level],
+                color="blue" if is_searched else color_map[level],
+                icon="search" if is_searched else icon_map[level],
                 prefix="glyphicon",
             ),
         ).add_to(m)
+
+        # Draw pulsing circle highlight for searched road
+        if is_searched:
+            folium.CircleMarker(
+                location=[row["Latitude"], row["Longitude"]],
+                radius=22,
+                color="#3498db",
+                fill=True,
+                fill_color="#3498db",
+                fill_opacity=0.3,
+                weight=3,
+            ).add_to(m)
 
     st_folium(m, width=None, height=480, returned_objects=[])
 
@@ -409,12 +493,15 @@ with map_col:
 with detail_col:
     st.markdown("### 📋 Road Details")
 
+    default_idx = roads.index(search_road) if (search_road != "All Roads" and search_road in roads) else 0
+
     selected_road = st.selectbox(
         "Select a road",
         roads,
-        index=0,
+        index=default_idx,
         label_visibility="collapsed",
     )
+
 
     # Get prediction for selected road
     sel_pred = pred_df[pred_df["Road/Intersection Name"] == selected_road].iloc[0]
