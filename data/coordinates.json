@@ -1,35 +1,5 @@
 {
     "roads": {
-        "Hosur Road": {
-            "area": "Electronic City",
-            "lat": 12.8399,
-            "lon": 77.6770
-        },
-        "Electronic City Flyover": {
-            "area": "Electronic City",
-            "lat": 12.8456,
-            "lon": 77.6603
-        },
-        "Bannerghatta Road": {
-            "area": "BTM Layout",
-            "lat": 12.9068,
-            "lon": 77.5978
-        },
-        "Outer Ring Road (BTM)": {
-            "area": "BTM Layout",
-            "lat": 12.9166,
-            "lon": 77.6101
-        },
-        "80 Feet Road": {
-            "area": "Koramangala",
-            "lat": 12.9352,
-            "lon": 77.6245
-        },
-        "Sarjapur Road": {
-            "area": "Koramangala",
-            "lat": 12.9167,
-            "lon": 77.6400
-        },
         "100 Feet Road": {
             "area": "Indiranagar",
             "lat": 12.9784,
@@ -40,55 +10,85 @@
             "lat": 12.9810,
             "lon": 77.6420
         },
-        "South End Road": {
-            "area": "Jayanagar",
-            "lat": 12.9250,
-            "lon": 77.5830
-        },
-        "11th Main Road": {
-            "area": "Jayanagar",
-            "lat": 12.9280,
-            "lon": 77.5780
+        "Marathahalli Bridge": {
+            "area": "Whitefield",
+            "lat": 12.9562,
+            "lon": 77.7019
         },
         "ITPL Main Road": {
             "area": "Whitefield",
             "lat": 12.9854,
             "lon": 77.7319
         },
-        "Whitefield Main Road": {
-            "area": "Whitefield",
-            "lat": 12.9698,
-            "lon": 77.7500
+        "Sony World Junction": {
+            "area": "Koramangala",
+            "lat": 12.9352,
+            "lon": 77.6245
         },
-        "27th Main Road": {
-            "area": "HSR Layout",
-            "lat": 12.9116,
-            "lon": 77.6389
+        "Sarjapur Road": {
+            "area": "Koramangala",
+            "lat": 12.9167,
+            "lon": 77.6400
         },
-        "Outer Ring Road (HSR)": {
-            "area": "HSR Layout",
-            "lat": 12.9150,
-            "lon": 77.6500
+        "Trinity Circle": {
+            "area": "M.G. Road",
+            "lat": 12.9726,
+            "lon": 77.6186
         },
-        "Old Madras Road": {
-            "area": "KR Puram",
-            "lat": 13.0070,
-            "lon": 77.6970
+        "Anil Kumble Circle": {
+            "area": "M.G. Road",
+            "lat": 12.9754,
+            "lon": 77.6012
         },
-        "KR Puram Bridge Road": {
-            "area": "KR Puram",
-            "lat": 13.0100,
-            "lon": 77.6870
+        "Jayanagar 4th Block": {
+            "area": "Jayanagar",
+            "lat": 12.9280,
+            "lon": 77.5830
+        },
+        "South End Circle": {
+            "area": "Jayanagar",
+            "lat": 12.9250,
+            "lon": 77.5800
+        },
+        "Hebbal Flyover": {
+            "area": "Hebbal",
+            "lat": 13.0358,
+            "lon": 77.5970
+        },
+        "Ballari Road": {
+            "area": "Hebbal",
+            "lat": 13.0280,
+            "lon": 77.5930
+        },
+        "Yeshwanthpur Circle": {
+            "area": "Yeshwanthpur",
+            "lat": 13.0180,
+            "lon": 77.5550
+        },
+        "Tumkur Road": {
+            "area": "Yeshwanthpur",
+            "lat": 13.0250,
+            "lon": 77.5400
+        },
+        "Silk Board Junction": {
+            "area": "Electronic City",
+            "lat": 12.9172,
+            "lon": 77.6228
+        },
+        "Hosur Road": {
+            "area": "Electronic City",
+            "lat": 12.8399,
+            "lon": 77.6770
         }
     },
     "areas": {
-        "Electronic City": {"lat": 12.8440, "lon": 77.6630},
-        "BTM Layout": {"lat": 12.9120, "lon": 77.6040},
-        "Koramangala": {"lat": 12.9260, "lon": 77.6320},
-        "Indiranagar": {"lat": 12.9800, "lon": 77.6410},
-        "Jayanagar": {"lat": 12.9260, "lon": 77.5800},
-        "Whitefield": {"lat": 12.9770, "lon": 77.7400},
-        "HSR Layout": {"lat": 12.9130, "lon": 77.6440},
-        "KR Puram": {"lat": 13.0080, "lon": 77.6920}
+        "Indiranagar": {"lat": 12.9784, "lon": 77.6408},
+        "Whitefield": {"lat": 12.9698, "lon": 77.7500},
+        "Koramangala": {"lat": 12.9352, "lon": 77.6245},
+        "M.G. Road": {"lat": 12.9754, "lon": 77.6012},
+        "Jayanagar": {"lat": 12.9280, "lon": 77.5830},
+        "Hebbal": {"lat": 13.0358, "lon": 77.5970},
+        "Yeshwanthpur": {"lat": 13.0180, "lon": 77.5550},
+        "Electronic City": {"lat": 12.8399, "lon": 77.6770}
     }
 }

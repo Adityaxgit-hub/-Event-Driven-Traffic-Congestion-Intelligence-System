@@ -7,11 +7,12 @@ Paste your keys in the .env file:
 
 import os
 from pathlib import Path
-from dotenv import load_dotenv
-
-# Load .env from project root
-_env_path = Path(__file__).resolve().parent.parent / ".env"
-load_dotenv(_env_path)
+try:
+    from dotenv import load_dotenv
+    _env_path = Path(__file__).resolve().parent.parent / ".env"
+    load_dotenv(_env_path)
+except ImportError:
+    pass
 
 # ---------------------------------------------------------------------------
 # CARTO Basemaps
