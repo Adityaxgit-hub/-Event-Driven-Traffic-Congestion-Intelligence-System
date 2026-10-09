@@ -20,7 +20,7 @@ from lightgbm import LGBMRegressor
 from src.utils import (
     CONGESTION_MAP_INV,
     MODELS_DIR,
-    load_processed_data,
+    load_combined_data,
 )
 
 # ---------------------------------------------------------------------------
@@ -186,7 +186,7 @@ def main():
     print("STEP 4 -- Forecaster Training")
     print("=" * 60)
 
-    df = load_processed_data()
+    df = load_combined_data()
 
     print("\nSplitting data (time-based) ...")
     train_df, test_df = time_split(df)

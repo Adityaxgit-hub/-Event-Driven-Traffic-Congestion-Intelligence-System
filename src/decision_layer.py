@@ -1,8 +1,8 @@
 """
-Step 5 -- Decision layer: manpower allocation, priority scoring, diversion.
+Step 5 -- Decision layer: priority scoring and diversion suggestions.
 
 Combines classifier predictions, forecast trends, and historical incident
-rates to produce actionable recommendations per road.
+rates to produce actionable route recommendations for commuters.
 
 Usage:
     python -m src.decision_layer   (standalone test)
@@ -10,16 +10,8 @@ Usage:
 
 import numpy as np
 import pandas as pd
-from pulp import (
-    LpMaximize,
-    LpProblem,
-    lpSum,
-    value,
-    HiGHS,
-)
 
 from src.utils import (
-    TOTAL_OFFICERS,
     CONGESTION_MAP,
     load_coordinates,
     nearest_alternate_road,
@@ -82,77 +74,7 @@ def compute_priority_scores(
 
 
 # ---------------------------------------------------------------------------
-# 2. Manpower Allocation (PuLP integer program)
-# ---------------------------------------------------------------------------
-
-def allocate_manpower(
-    priority_df: pd.DataFrame,
-    total_officers: int = TOTAL_OFFICERS,
-    min_per_high: int = 3,
-    min_per_medium: int = 1,
-) -> dict[str, int]:
-    """
-    Solve an integer linear program to allocate officers to roads.
-
-    Objective: maximize total weighted coverage
-        (officers_i x priority_score_i)
-
-    Constraints:
-        - sum(officers) <= total_officers
-        - High-priority roads get at least `min_per_high` officers
-        - Medium-priority roads get at least `min_per_medium`
-        - Low-priority roads get at least 0
-        - Each road gets at most 10 officers
-
-    Returns dict: road_name -> officers_assigned
-    """
-    roads = priority_df["Road"].tolist()
-    # Ensure scores are plain Python floats (no NaN/numpy types)
-    scores = {
-        r: float(s) if not (s != s) else 0.0  # NaN check: NaN != NaN
-        for r, s in zip(priority_df["Road"], priority_df["Priority_Score"])
-    }
-    labels = dict(zip(priority_df["Road"], priority_df["Priority_Label"]))
-
-    prob = LpProblem("ManpowerAllocation", LpMaximize)
-
-    # Decision variables (PuLP v4: create via prob.add_variable)
-    x = {}
-    for i, road in enumerate(roads):
-        x[road] = prob.add_variable(
-            f"officers_{i}", lowBound=0, upBound=10, cat="Integer"
-        )
-
-    # Objective: maximize weighted coverage
-    prob += lpSum([scores[r] * x[r] for r in roads])
-
-    # Total constraint
-    prob += lpSum([x[r] for r in roads]) <= total_officers
-
-    # Minimum assignment per priority
-    for r in roads:
-        if labels[r] == "High":
-            prob += x[r] >= min_per_high
-        elif labels[r] == "Medium":
-            prob += x[r] >= min_per_medium
-
-    # Solve (explicitly use HiGHS solver, suppress output)
-    stats = prob.solve(HiGHS(msg=0))
-
-    if not stats.has_solution:
-        print(f"  [!] PuLP status: {stats.status} -- using fallback allocation")
-        # Fallback: distribute evenly
-        per_road = total_officers // len(roads)
-        return {r: per_road for r in roads}
-
-    allocation = {r: int(value(x[r])) for r in roads}
-    total_used = sum(allocation.values())
-    print(f"  Allocated {total_used}/{total_officers} officers across {len(roads)} roads")
-    return allocation
-
-
-# ---------------------------------------------------------------------------
-# 3. Diversion Suggestions
+# 2. Diversion Suggestions
 # ---------------------------------------------------------------------------
 
 def suggest_diversions(
@@ -172,7 +94,7 @@ def suggest_diversions(
 
 
 # ---------------------------------------------------------------------------
-# 4. Combined decision output
+# 3. Combined decision output
 # ---------------------------------------------------------------------------
 
 def generate_decisions(
@@ -180,20 +102,15 @@ def generate_decisions(
     predicted_congestion: dict[str, int],
     incident_rates: dict[str, float],
     forecast_trends: dict[str, str],
-    total_officers: int = TOTAL_OFFICERS,
 ) -> pd.DataFrame:
     """
-    Full decision pipeline: priority -> allocation -> diversion.
+    Full decision pipeline: priority scoring + diversion suggestions.
     Returns a DataFrame with one row per road and all decision outputs.
     """
     # Priority scoring
     priority_df = compute_priority_scores(
         roads, predicted_congestion, incident_rates, forecast_trends
     )
-
-    # Manpower allocation
-    allocation = allocate_manpower(priority_df, total_officers=total_officers)
-    priority_df["Officers_Assigned"] = priority_df["Road"].map(allocation)
 
     # Diversion suggestions
     diversions = suggest_diversions(roads, predicted_congestion)

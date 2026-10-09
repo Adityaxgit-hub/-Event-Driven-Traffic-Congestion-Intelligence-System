@@ -1,6 +1,6 @@
 """
 Generate realistic synthetic data that mirrors the Kaggle Bangalore Traffic
-Dataset and BTP accident data. Run this to bootstrap the project before you
+Dataset and historical accident data. Run this to bootstrap the project before you
 have the real CSVs.
 
 Usage:
@@ -140,8 +140,8 @@ def generate_traffic_data() -> pd.DataFrame:
     return df
 
 
-def generate_btp_accident_data() -> pd.DataFrame:
-    """Generate synthetic BTP accident data (station-wise annual)."""
+def generate_accident_data() -> pd.DataFrame:
+    """Generate synthetic historical accident data (zone-wise annual)."""
     areas = list(_coords["areas"].keys())
     rows = []
     for year in range(2018, 2024):
@@ -151,13 +151,17 @@ def generate_btp_accident_data() -> pd.DataFrame:
             injury = int(total_accidents * random.uniform(0.15, 0.35))
             rows.append({
                 "Year": year,
-                "Police Station / Area": area,
+                "Traffic Zone / Area": area,
                 "Total Accidents": total_accidents,
                 "Fatal Accidents": fatal,
                 "Injury Accidents": injury,
                 "Fatalities": random.randint(fatal, fatal + 10),
             })
     return pd.DataFrame(rows)
+
+
+# Backward compatibility alias
+generate_btp_accident_data = generate_accident_data
 
 
 # ---------------------------------------------------------------------------
@@ -171,8 +175,8 @@ def main():
     traffic_df.to_csv(traffic_path, index=False)
     print(f"  Saved {len(traffic_df)} records to {traffic_path}")
 
-    print("Generating synthetic BTP accident data ...")
-    btp_df = generate_btp_accident_data()
+    print("Generating synthetic historical accident data ...")
+    btp_df = generate_accident_data()
     btp_path = os.path.join(DATA_RAW, "btp_accidents.csv")
     btp_df.to_csv(btp_path, index=False)
     print(f"  Saved {len(btp_df)} records to {btp_path}")

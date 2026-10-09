@@ -1,6 +1,6 @@
 # 🚦 Event-Driven Traffic Congestion Intelligence System
 
-A prototype system that predicts traffic congestion in Bengaluru and generates operational recommendations — officer deployment, priority scoring, and diversion suggestions.
+A prototype system that predicts traffic congestion in Bengaluru and generates operational recommendations — traffic marshal deployment, priority scoring, and diversion suggestions.
 
 ## Quick Start
 
@@ -31,7 +31,7 @@ streamlit run dashboard/app.py
 
 | Step | Module | What it does |
 |------|--------|--------------|
-| 1–2 | `src/data_prep.py` | Clean data, merge BTP incident rates, engineer features |
+| 1–2 | `src/data_prep.py` | Clean data, merge historical incident rates, engineer features |
 | 3 | `src/classifier.py` | CatBoost classifier → Low / Medium / High congestion |
 | 4 | `src/forecaster.py` | LightGBM lag-feature regressor → directional forecast |
 | 5 | `src/decision_layer.py` | PuLP optimization + priority scoring + diversion logic |
@@ -40,13 +40,13 @@ streamlit run dashboard/app.py
 ## Data
 
 - **Bangalore City Traffic Dataset (Kaggle)** — place as `data/raw/bangalore_traffic.csv`
-- **BTP Accident Data (OpenCity.in)** — place as `data/raw/btp_accidents.csv`
+- **Historical Incident / Accident Data (OpenCity.in)** — place as `data/raw/btp_accidents.csv`
 - Or run `python -m src.generate_sample_data` for synthetic data
 
 ## Simplifying Assumptions
 
 - Coordinates are hardcoded approximations (`data/coordinates.json`)
-- Manpower pool is simulated (default: 50 officers)
+- Manpower pool is simulated (default: 50 traffic marshals)
 - No real-time data; the dashboard simulates conditions via what-if controls
 - Diversion uses straight-line distance, not road-network routing
 

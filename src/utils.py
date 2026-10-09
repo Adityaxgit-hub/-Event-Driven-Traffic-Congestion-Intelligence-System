@@ -30,11 +30,8 @@ CONGESTION_MAP_INV = {v: k for k, v in CONGESTION_MAP.items()}
 
 WEATHER_CONDITIONS = ["Clear", "Fog", "Rain", "Heavy Rain"]
 
-# Simulated manpower: total officers available for deployment
-TOTAL_OFFICERS = 50
-
-# Number of areas / stations
-NUM_AREAS = 8
+# Number of areas (8 original + new areas from route data)
+NUM_AREAS = 14
 
 # Feature columns used by the classifier (populated during training, saved here for reference)
 CLASSIFIER_FEATURES = None  # set at runtime
@@ -126,3 +123,25 @@ def load_processed_data() -> pd.DataFrame:
             f"Processed data not found at {path}. Run data_prep.py first."
         )
     return pd.read_csv(path, parse_dates=["Date"])
+
+
+def load_route_data() -> pd.DataFrame:
+    """Load the processed route features dataset."""
+    path = os.path.join(DATA_PROCESSED, "route_features.csv")
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            f"Route data not found at {path}. Run route_data_prep.py first."
+        )
+    return pd.read_csv(path, parse_dates=["Date"])
+
+
+def load_combined_data() -> pd.DataFrame:
+    """
+    Load the combined (intersection + route) dataset if available,
+    otherwise fall back to intersection-only data.
+    """
+    combined_path = os.path.join(DATA_PROCESSED, "traffic_features_combined.csv")
+    if os.path.exists(combined_path):
+        return pd.read_csv(combined_path, parse_dates=["Date"])
+    return load_processed_data()
+

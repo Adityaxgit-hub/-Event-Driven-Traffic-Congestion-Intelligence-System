@@ -1,7 +1,7 @@
 """
 Step 1 & 2 -- Data cleaning, merging, and feature engineering.
 
-Reads raw CSVs from data/raw/, cleans them, merges BTP incident rates,
+Reads raw CSVs from data/raw/, cleans them, merges historical incident rates,
 engineers features, and writes the result to data/processed/traffic_features.csv.
 
 Usage:
@@ -37,17 +37,21 @@ def load_traffic_data() -> pd.DataFrame:
     return df
 
 
-def load_btp_data() -> pd.DataFrame:
-    """Load the BTP accident CSV."""
+def load_incident_data() -> pd.DataFrame:
+    """Load the historical accident / incident CSV."""
     path = os.path.join(DATA_RAW, "btp_accidents.csv")
     if not os.path.exists(path):
         raise FileNotFoundError(
-            f"BTP data not found at {path}.\n"
-            "Either place the OpenCity CSV there or run:  python -m src.generate_sample_data"
+            f"Incident data not found at {path}.\n"
+            "Either place the CSV there or run:  python -m src.generate_sample_data"
         )
     df = pd.read_csv(path)
-    print(f"Loaded BTP data: {df.shape}")
+    print(f"Loaded historical incident data: {df.shape}")
     return df
+
+
+# Backward compatibility alias
+load_btp_data = load_incident_data
 
 
 # ---------------------------------------------------------------------------
@@ -124,12 +128,12 @@ def clean_traffic(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
-# 3. Compute BTP incident rate per area
+# 3. Compute historical incident rate per area
 # ---------------------------------------------------------------------------
 
 def compute_incident_rate(btp_df: pd.DataFrame) -> pd.DataFrame:
     """
-    Aggregate BTP data into a historical incident rate per area.
+    Aggregate historical accident data into an incident rate per area.
     Returns a DataFrame with columns: [Area Name, Historical Incident Rate]
     """
     btp = btp_df.copy()
@@ -137,11 +141,11 @@ def compute_incident_rate(btp_df: pd.DataFrame) -> pd.DataFrame:
     # Standardize the area column name
     area_col = None
     for c in btp.columns:
-        if "station" in c.lower() or "area" in c.lower():
+        if "station" in c.lower() or "area" in c.lower() or "zone" in c.lower():
             area_col = c
             break
     if area_col is None:
-        raise ValueError("Cannot find area/station column in BTP data")
+        raise ValueError("Cannot find area/zone column in incident data")
 
     btp.rename(columns={area_col: "Area Name"}, inplace=True)
     btp["Area Name"] = btp["Area Name"].str.strip().str.title()
@@ -176,7 +180,7 @@ def merge_and_engineer(traffic_df: pd.DataFrame, incident_rate: pd.DataFrame) ->
     """
     df = traffic_df.copy()
 
-    # --- Merge BTP incident rate (left join on area) ---
+    # --- Merge historical incident rate (left join on area) ---
     df = df.merge(incident_rate, on="Area Name", how="left")
     df["Historical Incident Rate"] = df["Historical Incident Rate"].fillna(0)
 
@@ -288,6 +292,46 @@ def save_processed(df: pd.DataFrame) -> str:
 # Entry point
 # ---------------------------------------------------------------------------
 
+def merge_route_data(intersection_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Load processed route data and merge with intersection data into
+    a combined training dataset.
+    """
+    route_path = os.path.join(DATA_PROCESSED, "route_features.csv")
+    if not os.path.exists(route_path):
+        print("  No route features found — skipping route merge")
+        return intersection_df
+
+    print("\n  Loading processed route data ...")
+    route_df = pd.read_csv(route_path, parse_dates=["Date"])
+
+    # Align columns -- keep only the columns that exist in both datasets
+    # plus allow route-specific extras
+    intersection_cols = set(intersection_df.columns)
+    route_cols = set(route_df.columns)
+    common_cols = list(intersection_cols & route_cols)
+
+    print(f"  Intersection columns: {len(intersection_cols)}")
+    print(f"  Route columns: {len(route_cols)}")
+    print(f"  Common columns: {len(common_cols)}")
+
+    # For merging, use only common columns to avoid NaN explosion
+    intersection_aligned = intersection_df[common_cols].copy()
+    route_aligned = route_df[common_cols].copy()
+
+    # Tag the source
+    intersection_aligned["Data_Source"] = "intersection"
+    route_aligned["Data_Source"] = "route"
+
+    combined = pd.concat([intersection_aligned, route_aligned], ignore_index=True)
+    combined = combined.sort_values("Date").reset_index(drop=True)
+
+    print(f"  Combined dataset: {len(combined):,} rows")
+    print(f"  Congestion distribution:\n{combined['Congestion Level'].value_counts().to_string()}")
+
+    return combined
+
+
 def main():
     print("=" * 60)
     print("STEP 1 -- Data Cleaning & Preparation")
@@ -299,15 +343,42 @@ def main():
     print("\nCleaning traffic data ...")
     traffic_clean = clean_traffic(traffic_df)
 
-    print("\nComputing BTP incident rates ...")
+    print("\nComputing historical incident rates ...")
     incident_rate = compute_incident_rate(btp_df)
 
     print("\nSTEP 2 -- Feature Engineering")
     print("-" * 40)
     features_df = merge_and_engineer(traffic_clean, incident_rate)
 
-    print("\nSaving ...")
+    print("\nSaving intersection features ...")
     save_processed(features_df)
+
+    # --- Route data integration ---
+    print("\n" + "=" * 60)
+    print("STEP 2b -- Route Data Integration")
+    print("=" * 60)
+
+    route_data_path = os.path.join(DATA_RAW, "bangalore_routes.csv")
+    if os.path.exists(route_data_path):
+        try:
+            from src.route_data_prep import main as run_route_prep
+            print("\nRunning route data preparation ...")
+            run_route_prep()
+
+            print("\nMerging intersection + route data ...")
+            combined_df = merge_route_data(features_df)
+
+            # Save combined dataset
+            combined_path = os.path.join(DATA_PROCESSED, "traffic_features_combined.csv")
+            combined_df.to_csv(combined_path, index=False)
+            print(f"\n  Saved combined dataset to {combined_path}")
+            print(f"  Shape: {combined_df.shape}")
+        except Exception as e:
+            print(f"\n  Warning: Route data integration failed: {e}")
+            print("  Continuing with intersection data only.")
+    else:
+        print("\n  No route data found — skipping route integration")
+
     print("\nDone OK")
 
 
